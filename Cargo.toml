@@ -1,0 +1,17 @@
+[package]
+name = "mergeme"
+version = "0.1.0"
+edition = "2021"
+
+# Minimal binary that shells out to `ffmpeg`, `ffprobe` and `exiftool`.
+
+[dependencies]
+chrono = "0.4"
+
+[lib]
+name = "mergeme"
+path = "src/lib.rs"
+
+[[bin]]
+name = "mergeme"
+path = "src/main.rs"

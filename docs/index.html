@@ -1,0 +1,44 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>mergeme | Google Photos video maker</title>
+  <meta name="description" content="Turn a Google Photos export into one chronological, YouTube-ready video.">
+  <style>
+    :root { color-scheme: dark; --ink: #f4f1ea; --muted: #b9b7b0; --accent: #f0b35a; --bg: #171918; --panel: #222624; }
+    * { box-sizing: border-box; }
+    body { margin: 0; color: var(--ink); background: radial-gradient(circle at 15% 0%, #3c392b, var(--bg) 42%); font: 17px/1.6 Georgia, serif; }
+    main { max-width: 900px; margin: 0 auto; padding: 12vh 7vw 10vh; }
+    .eyebrow { color: var(--accent); font: 700 0.8rem/1.2 ui-monospace, SFMono-Regular, Menlo, monospace; letter-spacing: 0.12em; text-transform: uppercase; }
+    h1 { max-width: 700px; margin: 0.35em 0; font-size: clamp(3.5rem, 11vw, 7.5rem); line-height: 0.9; letter-spacing: -0.04em; }
+    .lead { max-width: 650px; color: var(--muted); font-size: 1.35rem; }
+    .actions { display: flex; flex-wrap: wrap; gap: 0.8rem; margin: 2rem 0 4rem; }
+    a { color: inherit; }
+    .button { display: inline-block; padding: 0.75rem 1rem; border: 1px solid var(--accent); color: #171918; background: var(--accent); font: 700 0.9rem/1.2 ui-monospace, SFMono-Regular, Menlo, monospace; text-decoration: none; }
+    .button.secondary { color: var(--ink); background: transparent; }
+    section { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 1rem; }
+    article { padding: 1.2rem; background: var(--panel); border: 1px solid #363b37; }
+    h2 { margin-top: 0; font-size: 1.2rem; }
+    code { color: var(--accent); font: 0.9em ui-monospace, SFMono-Regular, Menlo, monospace; }
+    footer { margin-top: 4rem; color: var(--muted); font-size: 0.9rem; }
+  </style>
+</head>
+<body>
+  <main>
+    <div class="eyebrow">Open-source media tool</div>
+    <h1>mergeme</h1>
+    <p class="lead">Turn a Google Photos export into one chronological, YouTube-ready video, with dates, month cards, photos, clips, and a quiet soundtrack.</p>
+    <div class="actions">
+      <a class="button" href="https://github.com/fabiostawinski/mergeme/releases">Download releases</a>
+      <a class="button secondary" href="https://github.com/fabiostawinski/mergeme">View source</a>
+    </div>
+    <section>
+      <article><h2>Cross-platform</h2><p>Prebuilt binaries are available for Linux, Intel and Apple Silicon macOS, and Windows.</p></article>
+      <article><h2>Simple runtime</h2><p>Install <code>ffmpeg</code>, <code>ffprobe</code>, and <code>exiftool</code>, then point <code>mergeme</code> at your export.</p></article>
+      <article><h2>Support development</h2><p>If this saves you time, support the project through <a href="https://github.com/sponsors/fabiostawinski">GitHub Sponsors</a>.</p></article>
+    </section>
+    <footer>Documentation and installation instructions are included in the repository README.</footer>
+  </main>
+</body>
+</html>

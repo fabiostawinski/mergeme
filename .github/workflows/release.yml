@@ -1,0 +1,81 @@
+name: Release mergeme
+
+on:
+  push:
+    tags: ['mergeme-v*']
+
+permissions:
+  contents: write
+
+env:
+  CARGO_TERM_COLOR: always
+
+jobs:
+  build:
+    name: Build ${{ matrix.name }}
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - name: linux-x86_64
+            os: ubuntu-latest
+            target: x86_64-unknown-linux-gnu
+            archive: tar.gz
+          - name: macos-x86_64
+            os: macos-13
+            target: x86_64-apple-darwin
+            archive: tar.gz
+          - name: macos-aarch64
+            os: macos-14
+            target: aarch64-apple-darwin
+            archive: tar.gz
+          - name: windows-x86_64
+            os: windows-latest
+            target: x86_64-pc-windows-msvc
+            archive: zip
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: ${{ matrix.target }}
+      - name: Build release binary
+        run: cargo build --locked --release --target ${{ matrix.target }}
+      - name: Package Unix release
+        if: matrix.archive == 'tar.gz'
+        shell: bash
+        run: |
+          set -euxo pipefail
+          staging="mergeme-${{ matrix.target }}"
+          mkdir "$staging"
+          cp "target/${{ matrix.target }}/release/mergeme" "$staging/"
+          cp -R scripts README.md "$staging/"
+          tar -czf "$staging.tar.gz" "$staging"
+      - name: Package Windows release
+        if: matrix.archive == 'zip'
+        shell: pwsh
+        run: |
+          $staging = "mergeme-${{ matrix.target }}"
+          New-Item -ItemType Directory -Path $staging | Out-Null
+          Copy-Item "target/${{ matrix.target }}/release/mergeme.exe" $staging
+          Copy-Item scripts, README.md $staging -Recurse
+          Compress-Archive -Path $staging -DestinationPath "$staging.zip"
+      - uses: actions/upload-artifact@v4
+        with:
+          name: mergeme-${{ matrix.target }}
+          path: mergeme-${{ matrix.target }}.${{ matrix.archive }}
+
+  publish:
+    name: Publish GitHub Release
+    needs: build
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          path: release-assets
+          pattern: mergeme-*
+          merge-multiple: true
+      - name: Publish release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh release create "${{ github.ref_name }}" release-assets/* --repo "${{ github.repository }}" --generate-notes
