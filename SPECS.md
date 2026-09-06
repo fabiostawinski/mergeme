@@ -17,6 +17,11 @@ This is a tool that merges my google photos videos, in a single video to be adde
 
 <!-- What is explicitly out of scope. -->
 
+## Contribution conventions
+
+Commit messages must follow the Conventional Commits format, such as
+`feat:`, `fix:`, `docs:`, or `chore:`.
+
 ## Open questions
 
 <!-- Anything undecided yet. -->
