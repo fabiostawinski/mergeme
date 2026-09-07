@@ -1,6 +1,6 @@
 [package]
 name = "mergeme"
-version = "0.1.0"
+version = "0.1.1"
 edition = "2021"
 
 # Minimal binary that shells out to `ffmpeg`, `ffprobe` and `exiftool`.

@@ -7,6 +7,7 @@ use std::env;
 use std::fs;
 use std::path::{Path, PathBuf};
 use std::process::Command;
+use std::sync::OnceLock;
 use std::thread;
 
 const ONE_GIB: u64 = 1024 * 1024 * 1024;
@@ -183,6 +184,118 @@ fn escape_drawtext(s: &str) -> String {
     s.replace('\\', "\\\\").replace(':', "\\:").replace('\'', "\\'").replace('%', "\\%")
 }
 
+/// A real font file on disk for `drawtext` to use: first asks fontconfig
+/// (`fc-match`), then falls back to hardcoded paths for common installs on
+/// this OS. See `fontfile_fragment` for why this is needed on every
+/// platform, not just Linux.
+fn detect_font_path() -> Option<String> {
+    let from_fontconfig = Command::new("fc-match")
+        .args(["-f", "%{file}", "sans-serif:bold"])
+        .output()
+        .ok()
+        .filter(|out| out.status.success())
+        .map(|out| String::from_utf8_lossy(&out.stdout).trim().to_string())
+        .filter(|path| !path.is_empty() && Path::new(path).exists());
+    if from_fontconfig.is_some() {
+        return from_fontconfig;
+    }
+
+    let candidates: &[&str] = if cfg!(target_os = "windows") {
+        // Forward slashes even on Windows: ffmpeg's filter-string escaping
+        // only needs to worry about the drive-letter colon then, not every
+        // path separator too.
+        &[
+            "C:/Windows/Fonts/arialbd.ttf",
+            "C:/Windows/Fonts/segoeuib.ttf",
+            "C:/Windows/Fonts/calibrib.ttf",
+            "C:/Windows/Fonts/arial.ttf",
+        ]
+    } else if cfg!(target_os = "macos") {
+        &[
+            "/System/Library/Fonts/Supplemental/Arial Bold.ttf",
+            "/System/Library/Fonts/Supplemental/Arial.ttf",
+            "/Library/Fonts/Arial Bold.ttf",
+            "/System/Library/Fonts/Helvetica.ttc",
+        ]
+    } else {
+        &[
+            "/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf",
+            "/usr/share/fonts/dejavu/DejaVuSans-Bold.ttf",
+            "/usr/share/fonts/TTF/DejaVuSans-Bold.ttf",
+            "/usr/share/fonts/truetype/liberation/LiberationSans-Bold.ttf",
+            "/usr/share/fonts/liberation/LiberationSans-Bold.ttf",
+            "/usr/share/fonts/truetype/noto/NotoSans-Bold.ttf",
+        ]
+    };
+    candidates.iter().map(|p| p.to_string()).find(|p| Path::new(p).exists())
+}
+
+/// A `fontfile='...':` drawtext fragment (trailing colon included) to
+/// prepend to every `drawtext=` filter, or empty if no font could be found.
+///
+/// `drawtext` with no `fontfile` asks fontconfig to match a default family,
+/// which needs fontconfig to be both compiled in *and* configured with a
+/// `fonts.conf` it can load. That combination can't be taken for granted
+/// anywhere: confirmed in practice on Windows with the gyan.dev full ffmpeg
+/// build, which enables fontconfig but ships no config for it, failing with
+/// "Fontconfig error: Cannot load default config file: File not found";
+/// Linux is at least as exposed, since static builds there often skip
+/// fontconfig entirely and minimal/headless images frequently have no fonts
+/// installed even when it's present. Passing an explicit `fontfile` avoids
+/// fontconfig entirely (it only needs libfreetype to open the file), which
+/// is why it fixes the problem regardless of platform or root cause.
+/// Computed once and cached: it shells out to `fc-match`, and this is called
+/// once per encoded segment.
+fn fontfile_fragment() -> &'static str {
+    static FRAGMENT: OnceLock<String> = OnceLock::new();
+    FRAGMENT.get_or_init(|| match detect_font_path() {
+        Some(path) => format!("fontfile='{}':", escape_drawtext(&path)),
+        None => String::new(),
+    })
+}
+
+/// Fails fast, before any batch encoding starts, if text overlays are about
+/// to fail for lack of a font. `--dry-run` skips this: it never invokes
+/// ffmpeg, so a missing font there isn't fatal to what dry-run actually does.
+fn ensure_font_available() -> Result<(), Box<dyn std::error::Error>> {
+    if !fontfile_fragment().is_empty() {
+        return Ok(());
+    }
+    let hint = if cfg!(target_os = "windows") {
+        "checked fontconfig via `fc-match` and common fonts under C:\\Windows\\Fonts \
+         (Arial, Segoe UI, Calibri)"
+    } else if cfg!(target_os = "macos") {
+        "checked fontconfig via `fc-match` and the usual system Arial/Helvetica locations"
+    } else {
+        "checked fontconfig via `fc-match` and common DejaVu/Liberation/Noto install paths; \
+         install a font package, e.g. `sudo apt-get install fonts-dejavu-core` on \
+         Debian/Ubuntu or `sudo dnf install dejavu-sans-fonts` on Fedora"
+    };
+    Err(format!("No usable font file found for burning in the title/date text ({hint}).").into())
+}
+
+/// Fails fast with a single clear message if `ffmpeg`, `ffprobe`, or
+/// `exiftool` aren't on `PATH`, instead of letting a missing `ffprobe` sail
+/// through silently: `is_readable_video`/`is_readable_image` treat a failed
+/// probe as "unreadable" (see their doc comments), so a missing `ffprobe`
+/// otherwise surfaces as every single file being skipped and a misleading
+/// "no readable video or picture files found" error.
+fn ensure_required_tools_available() -> Result<(), Box<dyn std::error::Error>> {
+    let checks: &[(&str, &str)] = &[("ffmpeg", "-version"), ("ffprobe", "-version"), ("exiftool", "-ver")];
+    let missing: Vec<&str> =
+        checks.iter().filter(|(tool, arg)| Command::new(tool).arg(arg).output().is_err()).map(|(tool, _)| *tool).collect();
+    if !missing.is_empty() {
+        return Err(format!(
+            "Required tool(s) not found on PATH: {}. Install them first (see the README's \
+             Runtime requirements section, or run scripts/check-tools.sh / \
+             scripts\\check-tools.ps1).",
+            missing.join(", ")
+        )
+        .into());
+    }
+    Ok(())
+}
+
 fn ffprobe_duration(path: &Path) -> Result<f64, Box<dyn std::error::Error>> {
     let out = Command::new("ffprobe")
         .args(["-v", "error", "-show_entries", "format=duration", "-of", "default=noprint_wrappers=1:nokey=1"])
@@ -267,8 +380,9 @@ fn generate_bumper(work_dir: &Path, name: &str, label: &str) -> Result<PathBuf, 
         return Ok(out_path);
     }
     let text = escape_drawtext(label);
+    let fontfile = fontfile_fragment();
     let vf = format!(
-        "drawtext=text='{text}':fontsize=90:fontcolor=white:x=(w-text_w)/2:y=(h-text_h)/2"
+        "drawtext={fontfile}text='{text}':fontsize=90:fontcolor=white:x=(w-text_w)/2:y=(h-text_h)/2"
     );
     let cmd_args = [
         "-y".to_string(),
@@ -350,14 +464,14 @@ fn normalize_segment(
         } else {
             "aformat=sample_rates=48000:channel_layouts=stereo,apad".to_string()
         };
-        cmd.arg("-vf").arg(&vf).args(["-r", &TARGET_FPS.to_string(), "-vsync", "cfr"]);
+        cmd.arg("-vf").arg(&vf).args(["-r", &TARGET_FPS.to_string(), "-fps_mode", "cfr"]);
         cmd.arg("-af").arg(&af);
     } else {
         // No audio track at all: feed a silent one so every segment has
         // audio and the concat demuxer's audio timeline still covers this
         // clip's duration.
         cmd.args(["-f", "lavfi", "-i", "anullsrc=r=48000:cl=stereo"]);
-        cmd.arg("-vf").arg(&vf).args(["-r", &TARGET_FPS.to_string(), "-vsync", "cfr"]);
+        cmd.arg("-vf").arg(&vf).args(["-r", &TARGET_FPS.to_string(), "-fps_mode", "cfr"]);
         cmd.args(["-map", "0:v", "-map", "1:a"]);
     }
     cmd.args(["-t", &target_duration.to_string()]);
@@ -398,7 +512,7 @@ fn normalize_photo(
     let mut cmd = Command::new("ffmpeg");
     cmd.args(["-y", "-loop", "1", "-t", &duration]).arg("-i").arg(&png_path);
     cmd.args(["-f", "lavfi", "-i", "anullsrc=r=48000:cl=stereo", "-t", &duration]);
-    cmd.arg("-vf").arg(&vf).args(["-r", &TARGET_FPS.to_string(), "-vsync", "cfr"]);
+    cmd.arg("-vf").arg(&vf).args(["-r", &TARGET_FPS.to_string(), "-fps_mode", "cfr"]);
     cmd.args(["-c:v", "libx264", "-crf", CRF, "-preset", PRESET, "-c:a", INTERMEDIATE_AUDIO_CODEC]);
     cmd.arg(tmp_path_for(&out_path));
     run_checked_atomic(cmd, &out_path, &format!("normalizing {name}"))?;
@@ -418,8 +532,9 @@ fn segment_vf(caption: Option<&str>, rotation_deg: i32) -> String {
     match caption {
         Some(caption) => {
             let caption_text = escape_drawtext(caption);
+            let fontfile = fontfile_fragment();
             format!(
-                "{base},drawtext=text='{caption_text}':fontsize=26:fontcolor=white@0.9:box=1:boxcolor=black@0.4:\
+                "{base},drawtext={fontfile}text='{caption_text}':fontsize=26:fontcolor=white@0.9:box=1:boxcolor=black@0.4:\
                  boxborderw=6:x=w-text_w-24:y=h-text_h-24"
             )
         }
@@ -562,8 +677,9 @@ fn build_final(
     let mixed_audio = mix_audio(work_dir, concat_path, song, duration, fade_start, fade_duration, song_volume)?;
 
     let title_text = escape_drawtext(title);
+    let fontfile = fontfile_fragment();
     let drawtext = format!(
-        "drawtext=text='{title_text}':enable='lt(t\\,{TITLE_SECONDS})':fontsize=64:fontcolor=white:\
+        "drawtext={fontfile}text='{title_text}':enable='lt(t\\,{TITLE_SECONDS})':fontsize=64:fontcolor=white:\
          box=1:boxcolor=black@0.5:boxborderw=20:x=(w-text_w)/2:y=h-160[vout]"
     );
 
@@ -578,8 +694,15 @@ fn build_final(
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
     let args = parse_args()?;
+    ensure_required_tools_available()?;
 
-    let scanned = scan_media(&args.input)?;
+    // The default work-dir sits right next to the output file, which can
+    // itself land inside the input folder (e.g. `--input photos --output
+    // photos/out.mp4`); excluding it here keeps a rerun from rediscovering
+    // its own previous run's intermediate segments/bumpers/decoded frames as
+    // if they were fresh source media.
+    let scanned: Vec<PathBuf> =
+        scan_media(&args.input)?.into_iter().filter(|p| !p.starts_with(&args.work_dir)).collect();
     if scanned.is_empty() {
         return Err(format!("no video or picture files found under {:?}", args.input).into());
     }
@@ -680,6 +803,8 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         println!("Dry run: no video was produced.");
         return Ok(());
     }
+
+    ensure_font_available()?;
 
     fs::create_dir_all(&args.work_dir)?;
     if let Some(parent) = args.output.parent().filter(|p| !p.as_os_str().is_empty()) {
