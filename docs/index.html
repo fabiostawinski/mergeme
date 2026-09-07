@@ -3,10 +3,10 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>mergeme | Google Photos video maker</title>
-  <meta name="description" content="Turn a Google Photos export into one chronological, YouTube-ready video.">
+  <title>mergeme | chronological video maker</title>
+  <meta name="description" content="Turn a Google Photos export — or a folder of GoPro, DJI, or other camera clips — into one chronological, YouTube-ready video.">
   <style>
-    :root { color-scheme: dark; --ink: #f4f1ea; --muted: #b9b7b0; --accent: #f0b35a; --bg: #171918; --panel: #222624; }
+    :root { color-scheme: dark; --ink: #f4f1ea; --muted: #b9b7b0; --accent: #f0b35a; --bg: #171918; --panel: #222624; --line: #363b37; }
     * { box-sizing: border-box; }
     body { margin: 0; color: var(--ink); background: radial-gradient(circle at 15% 0%, #3c392b, var(--bg) 42%); font: 17px/1.6 Georgia, serif; }
     main { max-width: 900px; margin: 0 auto; padding: 12vh 7vw 10vh; }
@@ -17,28 +17,110 @@
     a { color: inherit; }
     .button { display: inline-block; padding: 0.75rem 1rem; border: 1px solid var(--accent); color: #171918; background: var(--accent); font: 700 0.9rem/1.2 ui-monospace, SFMono-Regular, Menlo, monospace; text-decoration: none; }
     .button.secondary { color: var(--ink); background: transparent; }
+    .button.sponsor { color: var(--ink); background: transparent; border-color: var(--line); }
+    .button.sponsor:hover { border-color: var(--accent); }
     section { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 1rem; }
-    article { padding: 1.2rem; background: var(--panel); border: 1px solid #363b37; }
+    article { padding: 1.2rem; background: var(--panel); border: 1px solid var(--line); }
     h2 { margin-top: 0; font-size: 1.2rem; }
     code { color: var(--accent); font: 0.9em ui-monospace, SFMono-Regular, Menlo, monospace; }
     footer { margin-top: 4rem; color: var(--muted); font-size: 0.9rem; }
+
+    .block { margin-top: 5rem; }
+    .block h2 { font-size: 1.8rem; margin-bottom: 0.3rem; }
+    .block .sub { color: var(--muted); font-size: 1rem; max-width: 600px; margin-bottom: 2rem; }
+
+    .timeline { list-style: none; margin: 0; padding: 0; position: relative; }
+    .timeline::before { content: ""; position: absolute; left: 15px; top: 8px; bottom: 8px; width: 1px; background: var(--line); }
+    .timeline li { position: relative; padding: 0 0 1.8rem 3rem; }
+    .timeline li:last-child { padding-bottom: 0; }
+    .timeline .num { position: absolute; left: 0; top: 0; width: 31px; height: 31px; border-radius: 50%; background: var(--panel); border: 1px solid var(--accent); color: var(--accent); font: 700 0.85rem/29px ui-monospace, SFMono-Regular, Menlo, monospace; text-align: center; }
+    .timeline h3 { margin: 0 0 0.2rem; font-size: 1.05rem; }
+    .timeline p { margin: 0; color: var(--muted); font-size: 0.95rem; }
+
+    .releases-list { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 0.6rem; }
+    .releases-list li { display: flex; justify-content: space-between; gap: 1rem; padding: 0.8rem 1rem; background: var(--panel); border: 1px solid var(--line); flex-wrap: wrap; }
+    .releases-list a { font-weight: 700; }
+    .release-date { color: var(--muted); font: 0.85rem ui-monospace, SFMono-Regular, Menlo, monospace; white-space: nowrap; }
   </style>
 </head>
 <body>
   <main>
     <div class="eyebrow">Open-source media tool</div>
     <h1>mergeme</h1>
-    <p class="lead">Turn a Google Photos export into one chronological, YouTube-ready video, with dates, month cards, photos, clips, and a quiet soundtrack.</p>
+    <p class="lead">Turn a Google Photos export — or any folder of GoPro, DJI, phone, or other camera clips — into one chronological, YouTube-ready video, with dates, month cards, photos, clips, and a quiet soundtrack.</p>
     <div class="actions">
       <a class="button" href="https://github.com/fabiostawinski/mergeme/releases">Download releases</a>
       <a class="button secondary" href="https://github.com/fabiostawinski/mergeme">View source</a>
+      <a class="button sponsor" href="https://github.com/sponsors/fabiostawinski">♥ Sponsor</a>
     </div>
     <section>
       <article><h2>Cross-platform</h2><p>Prebuilt binaries are available for Linux, Intel and Apple Silicon macOS, and Windows.</p></article>
-      <article><h2>Simple runtime</h2><p>Install <code>ffmpeg</code>, <code>ffprobe</code>, and <code>exiftool</code>, then point <code>mergeme</code> at your export.</p></article>
-      <article><h2>Support development</h2><p>If this saves you time, support the project through <a href="https://github.com/sponsors/fabiostawinski">GitHub Sponsors</a>.</p></article>
+      <article><h2>Simple runtime</h2><p>Install <code>ffmpeg</code>, <code>ffprobe</code>, and <code>exiftool</code>, then point <code>mergeme</code> at any export or camera folder.</p></article>
+      <article><h2>Any source</h2><p>Google Photos Takeout, GoPro, DJI, dashcams, phone dumps — anything with videos and pictures.</p></article>
     </section>
+
+    <div class="block">
+      <h2>How a video gets made</h2>
+      <p class="sub">One pass over your folder, from raw clips to a finished, publish-ready file.</p>
+      <ol class="timeline">
+        <li><span class="num">1</span><h3>Point at a folder</h3><p>Google Photos Takeout, a GoPro or DJI card dump, phone exports — anything with videos and pictures, scanned recursively.</p></li>
+        <li><span class="num">2</span><h3>Resolve capture time</h3><p>Takeout sidecar JSON first, then EXIF <code>CreateDate</code>/<code>DateTimeOriginal</code> via <code>exiftool</code>, then file mtime as a last resort.</p></li>
+        <li><span class="num">3</span><h3>Sort &amp; batch</h3><p>Everything is ordered chronologically and split into ~1GB batches, encoded in parallel.</p></li>
+        <li><span class="num">4</span><h3>Normalize</h3><p>Every clip is re-encoded to a common 1920x1080/30fps/AAC-stereo format so mixed cameras concatenate cleanly.</p></li>
+        <li><span class="num">5</span><h3>Insert cards</h3><p>A "Month Year" title card marks each new month, your title is burned onto the first second, and any custom markers land where you asked.</p></li>
+        <li><span class="num">6</span><h3>Mix the soundtrack</h3><p>Your song is looped or trimmed to fit, mixed in quietly under the original audio, and fades out under a closing black screen.</p></li>
+        <li><span class="num">7</span><h3>Concatenate</h3><p>Batches are joined into one finished, chronological, YouTube-ready MP4.</p></li>
+      </ol>
+    </div>
+
+    <div class="block">
+      <h2>Releases</h2>
+      <p class="sub">Pulled live from GitHub — see <a href="https://github.com/fabiostawinski/mergeme/releases">all releases</a> for full changelogs and every platform archive.</p>
+      <ul class="releases-list" id="releases-list">
+        <li>Loading releases…</li>
+      </ul>
+    </div>
+
     <footer>Documentation and installation instructions are included in the repository README.</footer>
   </main>
+  <script>
+    (async function loadReleases() {
+      const list = document.getElementById('releases-list');
+      try {
+        const res = await fetch('https://api.github.com/repos/fabiostawinski/mergeme/releases?per_page=5');
+        if (!res.ok) throw new Error('request failed');
+        const releases = await res.json();
+        if (!Array.isArray(releases) || releases.length === 0) throw new Error('no releases');
+
+        list.textContent = '';
+        for (const release of releases) {
+          const li = document.createElement('li');
+
+          const link = document.createElement('a');
+          link.href = release.html_url;
+          link.target = '_blank';
+          link.rel = 'noopener';
+          link.textContent = release.name || release.tag_name;
+
+          const date = document.createElement('span');
+          date.className = 'release-date';
+          date.textContent = release.published_at
+            ? new Date(release.published_at).toLocaleDateString(undefined, { year: 'numeric', month: 'short', day: 'numeric' })
+            : '';
+
+          li.append(link, date);
+          list.append(li);
+        }
+      } catch (err) {
+        list.textContent = '';
+        const li = document.createElement('li');
+        const link = document.createElement('a');
+        link.href = 'https://github.com/fabiostawinski/mergeme/releases';
+        link.textContent = 'Could not load releases automatically — view them on GitHub';
+        li.append(link);
+        list.append(li);
+      }
+    })();
+  </script>
 </body>
 </html>
