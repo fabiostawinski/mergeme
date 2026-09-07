@@ -29,7 +29,14 @@
     .block h2 { font-size: 1.8rem; margin-bottom: 0.3rem; }
     .block .sub { color: var(--muted); font-size: 1rem; max-width: 600px; margin-bottom: 2rem; }
     .block section article { min-width: 0; }
-    .block pre { max-width: 100%; overflow-x: auto; }
+    .command-row { display: flex; align-items: stretch; max-width: 100%; margin: 0.8rem 0; border: 1px solid var(--line); background: #171918; }
+    .command-row pre { min-width: 0; flex: 1; margin: 0; padding: 0.7rem 0.8rem; overflow-x: auto; }
+    .copy-button { flex: 0 0 auto; align-self: center; margin: 0.35rem; padding: 0.5rem 0.65rem; border: 1px solid var(--accent); color: var(--accent); background: transparent; cursor: pointer; font: 700 0.75rem/1.2 ui-monospace, SFMono-Regular, Menlo, monospace; }
+    .copy-button:hover, .copy-button:focus-visible { color: #171918; background: var(--accent); }
+    .copy-button:focus-visible { outline: 2px solid var(--ink); outline-offset: 2px; }
+    .command-inline { display: inline-flex; align-items: center; gap: 0.35rem; max-width: 100%; vertical-align: middle; }
+    .command-inline code { overflow-x: auto; white-space: nowrap; }
+    .command-inline .copy-button { margin: 0; }
 
     .timeline { list-style: none; margin: 0; padding: 0; position: relative; }
     .timeline::before { content: ""; position: absolute; left: 15px; top: 8px; bottom: 8px; width: 1px; background: var(--line); }
@@ -67,13 +74,19 @@
       <section>
         <article>
           <h3>macOS or Linux</h3>
-          <pre><code>curl -fsSL https://raw.githubusercontent.com/fabiostawinski/mergeme/main/scripts/install-mergeme.sh | sh</code></pre>
-          <p>Install the runtime tools with <code>brew install ffmpeg exiftool</code> on macOS, or <code>sudo apt-get install ffmpeg libimage-exiftool-perl</code> on Debian or Ubuntu.</p>
+          <div class="command-row">
+            <pre><code>curl -fsSL https://raw.githubusercontent.com/fabiostawinski/mergeme/main/scripts/install-mergeme.sh | sh</code></pre>
+            <button class="copy-button" type="button" data-copy="curl -fsSL https://raw.githubusercontent.com/fabiostawinski/mergeme/main/scripts/install-mergeme.sh | sh">Copy</button>
+          </div>
+          <p>Install the runtime tools with <span class="command-inline"><code>brew install ffmpeg exiftool</code><button class="copy-button" type="button" data-copy="brew install ffmpeg exiftool">Copy</button></span> on macOS, or <span class="command-inline"><code>sudo apt-get install ffmpeg libimage-exiftool-perl</code><button class="copy-button" type="button" data-copy="sudo apt-get install ffmpeg libimage-exiftool-perl">Copy</button></span> on Debian or Ubuntu.</p>
         </article>
         <article>
           <h3>Windows PowerShell</h3>
-          <pre><code>irm https://raw.githubusercontent.com/fabiostawinski/mergeme/main/scripts/install-mergeme.ps1 | iex</code></pre>
-          <p>Install the runtime tools with <code>winget install Gyan.FFmpeg OliverBetz.ExifTool</code>.</p>
+          <div class="command-row">
+            <pre><code>irm https://raw.githubusercontent.com/fabiostawinski/mergeme/main/scripts/install-mergeme.ps1 | iex</code></pre>
+            <button class="copy-button" type="button" data-copy="irm https://raw.githubusercontent.com/fabiostawinski/mergeme/main/scripts/install-mergeme.ps1 | iex">Copy</button>
+          </div>
+          <p>Install the runtime tools with <span class="command-inline"><code>winget install Gyan.FFmpeg OliverBetz.ExifTool</code><button class="copy-button" type="button" data-copy="winget install Gyan.FFmpeg OliverBetz.ExifTool">Copy</button></span>.</p>
         </article>
       </section>
       <p>Check your setup with <code>mergeme --help</code>. The installer places the command in <code>~/.local/bin</code> on macOS/Linux and <code>~/bin</code> on Windows.</p>
@@ -141,6 +154,19 @@
         list.append(li);
       }
     })();
+
+    document.querySelectorAll('[data-copy]').forEach((button) => {
+      button.addEventListener('click', async () => {
+        const originalLabel = button.textContent;
+        try {
+          await navigator.clipboard.writeText(button.dataset.copy);
+          button.textContent = 'Copied';
+        } catch {
+          button.textContent = 'Copy failed';
+        }
+        setTimeout(() => { button.textContent = originalLabel; }, 1600);
+      });
+    });
   </script>
 </body>
 </html>
