@@ -1,6 +1,6 @@
 $ErrorActionPreference = 'Stop'
 
-$repo = if ($env:MERGEME_REPO) { $env:MERGEME_REPO } else { 'fabiostawinski/rust' }
+$repo = if ($env:MERGEME_REPO) { $env:MERGEME_REPO } else { 'fabiostawinski/mergeme' }
 $version = if ($env:MERGEME_VERSION) { $env:MERGEME_VERSION } else { 'latest' }
 $prefix = if ($env:MERGEME_PREFIX) { $env:MERGEME_PREFIX } else { Join-Path $HOME 'bin' }
 $target = 'x86_64-pc-windows-msvc'

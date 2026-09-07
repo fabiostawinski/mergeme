@@ -1,7 +1,7 @@
 #!/usr/bin/env sh
 set -eu
 
-repo="${MERGEME_REPO:-fabiostawinski/rust}"
+repo="${MERGEME_REPO:-fabiostawinski/mergeme}"
 version="${MERGEME_VERSION:-latest}"
 prefix="${MERGEME_PREFIX:-$HOME/.local/bin}"
 mkdir -p "$prefix"

@@ -60,6 +60,24 @@
     </section>
 
     <div class="block">
+      <h2>Install in one step</h2>
+      <p class="sub">Install the latest release, then make sure the media tools are available on your computer.</p>
+      <section>
+        <article>
+          <h3>macOS or Linux</h3>
+          <pre><code>curl -fsSL https://raw.githubusercontent.com/fabiostawinski/mergeme/main/scripts/install-mergeme.sh | sh</code></pre>
+          <p>Install the runtime tools with <code>brew install ffmpeg exiftool</code> on macOS, or <code>sudo apt-get install ffmpeg libimage-exiftool-perl</code> on Debian or Ubuntu.</p>
+        </article>
+        <article>
+          <h3>Windows PowerShell</h3>
+          <pre><code>irm https://raw.githubusercontent.com/fabiostawinski/mergeme/main/scripts/install-mergeme.ps1 | iex</code></pre>
+          <p>Install the runtime tools with <code>winget install Gyan.FFmpeg OliverBetz.ExifTool</code>.</p>
+        </article>
+      </section>
+      <p>Check your setup with <code>mergeme --help</code>. The installer places the command in <code>~/.local/bin</code> on macOS/Linux and <code>~/bin</code> on Windows.</p>
+    </div>
+
+    <div class="block">
       <h2>How a video gets made</h2>
       <p class="sub">One pass over your folder, from raw clips to a finished, publish-ready file.</p>
       <ol class="timeline">
